@@ -10,7 +10,7 @@ with st.expander('Initial data'):
 
 st.write('**X**')
 X_raw = df.drop('species', axis=1)
-x_raw
+X_raw
 
 st.write('**y**')
 y_raw = df.species

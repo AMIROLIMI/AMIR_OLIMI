@@ -25,23 +25,13 @@ st.markdown("""
 - **R²**: 0.90  
 """)
 
-if os.path.exists("scaler.pkl"):
-    scaler = joblib.load("scaler.pkl")
-else:
-    st.error("❌ Файл 'scaler.pkl' не найден. Положите его рядом с app.py.")
-    st.stop()
+scaler = joblib.load("scaler.pkl")
 
 def load_lstm_model():
-    model = Sequential([
-        LSTM(32, input_shape=(14, 1), activation='relu'),
-        Dense(1)
-    ])
+    model = Sequential([LSTM(32, input_shape=(14, 1), activation='relu'), Dense(1)])
     model.compile(optimizer='adam', loss='mse')
     if os.path.exists("lstm_model.weights.h5"):
         model.load_weights("lstm_model.weights.h5")
-    else:
-        st.error("❌ Файл 'lstm_model.weights.h5' не найден.")
-        return None
     return model
 
 def create_dataset(data, window=14):

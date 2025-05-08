@@ -28,10 +28,8 @@ st.markdown("""
 scaler = joblib.load("scaler.pkl")
 
 def load_lstm_model():
-    model = Sequential([LSTM(32, input_shape=(14, 1), activation='relu'), Dense(1)])
-    model.compile(optimizer='adam', loss='mse')
-    if os.path.exists("lstm_model.weights.h5"):
-        model.load_weights("lstm_model.weights.h5")
+    model = Sequential([LSTM(32, input_shape=(14, 1)), Dense(1)])
+    model.load_weights("lstm_model.weights.h5") 
     return model
 
 def create_dataset(data, window=14):
@@ -42,9 +40,9 @@ def create_dataset(data, window=14):
     return np.array(X), np.array(y)
 
 def calculate_metrics(y_true, y_pred):
-    rmse = np.sqrt(mean_squared_error(y_true, (y_pred + 240)))
-    mape = mean_absolute_percentage_error(y_true, (y_pred + 240))
-    r2 = r2_score(y_true, (y_pred + 240))
+    rmse = np.sqrt(mean_squared_error(y_true, (y_pred)))
+    mape = mean_absolute_percentage_error(y_true, (y_pred))
+    r2 = r2_score(y_true, (y_pred))
     return rmse, mape, r2
 
 def plot_predictions(y_true, y_pred):

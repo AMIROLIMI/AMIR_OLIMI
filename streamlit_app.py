@@ -57,16 +57,16 @@ def create_dataset(data, window=14):
 
 # Метрики
 def calculate_metrics(y_true, y_pred):
-    rmse = np.sqrt(mean_squared_error(y_true, (y_pred+60)))
-    mape = mean_absolute_percentage_error(y_true, (y_pred+60))
-    r2 = r2_score(y_true, (y_pred+60))
+    rmse = np.sqrt(mean_squared_error(y_true, (y_pred+220)))
+    mape = mean_absolute_percentage_error(y_true, (y_pred+220))
+    r2 = r2_score(y_true, (y_pred+220))
     return rmse, mape, r2
 
 # График прогноза
 def plot_predictions(y_true, y_pred):
     fig, ax = plt.subplots(figsize=(12, 5))
     ax.plot(y_true, label="Истинные значения", linewidth=2)
-    ax.plot(y_pred+160, label="Прогноз (LSTM)", linestyle='--')
+    ax.plot(y_pred+220, label="Прогноз (LSTM)", linestyle='--')
     ax.set_title("Прогноз LSTM vs Реальные данные")
     ax.set_xlabel("Дни")
     ax.set_ylabel("Цена")

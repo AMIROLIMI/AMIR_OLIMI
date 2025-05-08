@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error, r2_score
 from datetime import timedelta
 import os
-import joblib  # для scaler
+import joblib
 
 st.set_page_config(page_title="Прогноз цены золота", layout="wide")
 st.title("💰 Прогноз цены золотых слитков с помощью LSTM")
@@ -26,11 +26,12 @@ st.markdown("""
 - **R²**: 0.90  
 """)
 
-# Загружаем scaler, если есть, или создаём новый
+# Загружаем scaler из файла
 if os.path.exists("scaler.pkl"):
     scaler = joblib.load("scaler.pkl")
 else:
-    scaler = MinMaxScaler()
+    st.error("❌ Файл 'scaler.pkl' не найден. Положите его рядом с app.py.")
+    st.stop()
 
 # Загружаем модель
 def load_lstm_model():
@@ -46,6 +47,7 @@ def load_lstm_model():
         return None
     return model
 
+# Формируем входы для модели
 def create_dataset(data, window=14):
     X, y = [], []
     for i in range(len(data) - window):
@@ -53,12 +55,14 @@ def create_dataset(data, window=14):
         y.append(data[i + window])
     return np.array(X), np.array(y)
 
+# Метрики
 def calculate_metrics(y_true, y_pred):
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
     mape = mean_absolute_percentage_error(y_true, y_pred)
     r2 = r2_score(y_true, y_pred)
     return rmse, mape, r2
 
+# График прогноза
 def plot_predictions(y_true, y_pred):
     fig, ax = plt.subplots(figsize=(12, 5))
     ax.plot(y_true, label="Истинные значения", linewidth=2)
@@ -70,6 +74,7 @@ def plot_predictions(y_true, y_pred):
     ax.grid(True)
     return fig
 
+# Прогноз на 1 дату
 def predict_single_date(model, df, target_date):
     last_date = df.index[-1]
     if target_date <= last_date:
@@ -79,7 +84,6 @@ def predict_single_date(model, df, target_date):
         st.warning("⚠️ Прогноз ограничен максимум 365 днями.")
         return None
 
-    # Масштабируем последние 14 дней
     last_14 = df["price"].values[-14:].reshape(-1, 1)
     scaled = scaler.transform(last_14).flatten()
     current_window = scaled.copy()
@@ -94,12 +98,15 @@ def predict_single_date(model, df, target_date):
     final_pred = scaler.inverse_transform(np.array([[predictions[-1]]]))[0][0]
     return final_pred
 
+# Загружаем модель
 model = load_lstm_model()
 
+# Загрузка файла
 uploaded_file = st.file_uploader("📂 Загрузите CSV или Excel с ценами", type=["csv", "xlsx"])
 
 tab1, tab2 = st.tabs(["📈 Прогноз по всем данным", "📅 Прогноз на дату"])
 
+# 📈 Прогноз по всем данным
 with tab1:
     if uploaded_file:
         df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith("xlsx") else pd.read_csv(uploaded_file)
@@ -108,9 +115,11 @@ with tab1:
         df = df.set_index('date').sort_index()
         st.write(df.tail())
 
-        # Сохраняем и переиспользуем scaler
-        scaled = scaler.fit_transform(df[['price']])
-        joblib.dump(scaler, "scaler.pkl")
+        try:
+            scaled = scaler.transform(df[['price']])
+        except:
+            st.error("❌ Ошибка при масштабировании. Убедитесь, что формат 'price' правильный.")
+            st.stop()
 
         X, y = create_dataset(scaled)
         X = X.reshape((X.shape[0], X.shape[1], 1))
@@ -126,6 +135,7 @@ with tab1:
     else:
         st.info("Загрузите файл для прогноза.")
 
+# 📅 Прогноз на 1 дату
 with tab2:
     st.subheader("📅 Прогноз на будущую дату")
     if uploaded_file:

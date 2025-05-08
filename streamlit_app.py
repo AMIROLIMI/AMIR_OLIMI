@@ -60,7 +60,7 @@ def plot_predictions(y_true, y_pred):
 model = load_lstm_model()
 uploaded_file = st.file_uploader("📂 Загрузите CSV или Excel с ценами", type=["csv", "xlsx"])
 st.markdown("""
-Если у вас ещё нет данных, вы можете скачать их из моего репозитория  
+Если у вас нет данных, вы можете скачать их из моего репозитория  
 [AMIROLIMI/AMIR_OLIMI](https://github.com/AMIROLIMI/AMIR_OLIMI).
 """
 )

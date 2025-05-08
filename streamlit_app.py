@@ -1,108 +1,78 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.callbacks import EarlyStopping
+from sklearn.preprocessing import MinMaxScaler
+import matplotlib.pyplot as plt
+import os
 
-st.title('First App Amir')
+# 📌 Настройки страницы
+st.set_page_config(page_title="Прогноз цены золота", layout="wide")
 
-st.write('Hello world!')
+st.title("💰 Прогноз цены золота на основе LSTM-модели")
 
-with st.expander('Initial data'):
-  df = pd.read_csv('https://raw.githubusercontent.com/dataprofessor/data/master/penguins_cleaned.csv')
-  
-  st.write('**X**')
-  X_raw = df.drop('species', axis=1)
-  X_raw
+st.markdown("""
+Модель предсказывает цену золота, используя нейросеть LSTM.  
+Она обучена на 2861 точке и использует окно в 14 дней.  
+Метрики:
+- **RMSE:** 47.33
+- **MAPE:** 0.007
+- **R²:** 0.99  
+Кросс-валидация:
+- **RMSE:** 53.05
+- **MAPE:** 0.01
+- **R²:** 0.90
+""")
 
-  st.write('**y**')
-  y_raw = df.species
-  y_raw
+uploaded_file = st.file_uploader("Загрузите файл с ценами (Excel)", type=["xlsx", "csv"])
+if uploaded_file:
+    df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith(".xlsx") else pd.read_csv(uploaded_file)
+    st.write("📊 Загруженные данные:", df.head())
 
-with st.expander('Data visualization'):
-  st.scatter_chart(data=df, x='bill_length_mm', y='body_mass_g', color='species')
-  st.scatter_chart(data=df, x='bill_depth_mm', y='sex', color='species')
+    if st.button("📈 Построить прогноз"):
+        # Подготовка данных
+        df.columns = ['date', 'price']
+        df['date'] = pd.to_datetime(df['date'])
+        df = df.set_index('date')
 
-with st.sidebar:
-  st.header('Inout Features')
-  island = st.selectbox('Island', ('Biscoe', 'Dream', 'Torgerson'))
-  bill_length_mm = st.slider('Bill depth (mm)', 32.1, 59.6, 43.9)
-  bill_depth_mm = st.slider('Bill depth (mm)', 13.1, 21.5, 17.2) 
-  flipper_length_mm = st.slider('flipper length (mm)', 172.0, 231.0, 201.0)
-  body_mass_g = st.slider('Body mass (g)', 2700.0, 6300.0, 4207.0)
-  gender = st.selectbox('Gender', ('male', 'female'))
+        scaler = MinMaxScaler()
+        scaled = scaler.fit_transform(df[['price']])
 
-# Create a DataFrame for the input features
-  data = {'island': island,
-          'bill_length_mm': bill_length_mm,
-          'bill_depth_mm': bill_depth_mm,
-          'flipper_length_mm': flipper_length_mm,
-          'body_mass_g': body_mass_g,
-          'sex': gender}
-  input_df = pd.DataFrame(data, index=[0])
-  input_penguins = pd.concat([input_df, X_raw], axis=0)
+        # Создание выборки
+        def create_dataset(data, window=14):
+            X, y = [], []
+            for i in range(len(data) - window):
+                X.append(data[i:i+window])
+                y.append(data[i+window])
+            return np.array(X), np.array(y)
 
-encode = ['island', 'sex']
-df_penguins = pd.get_dummies (input_penguins, prefix=encode)
+        X, y = create_dataset(scaled)
+        X = X.reshape(X.shape[0], X.shape[1], 1)
 
-X = df_penguins [1:]
-input_row = df_penguins [:1]
-# Encode y
-target_mapper = {'Adelie': 0,
-                 'Chinstrap': 1,
-                 'Gentoo': 2}
-def target_encode(val):
-  return target_mapper [val]
-y = y_raw.apply(target_encode)
-with st.expander ('Data preparation'):
-  st.write('**Encoded X (input penguin)**')
-  input_row
-  st.write('**Encoded y**')
-  y
+        # Архитектура и загрузка весов
+        model = Sequential([LSTM(32, input_shape=(14, 1)), Dense(1)])
+        model.compile(optimizer='adam', loss='mse')
+        model.load_weights("lstm_model.weights.h5")
 
-# Model training and inference
-## Train the ML model
-clf = RandomForestClassifier()
-clf.fit(X, y)
+        # Прогноз
+        y_pred = model.predict(X)
+        y_pred_inv = scaler.inverse_transform(y_pred)
+        y_true_inv = scaler.inverse_transform(y.reshape(-1, 1))
 
-## Apply model to make predictions
-prediction = clf.predict(input_row)
-prediction_proba = clf.predict_proba(input_row)
+        # Метрики
+        from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error, r2_score
+        rmse = np.sqrt(mean_squared_error(y_true_inv, y_pred_inv))
+        mape = mean_absolute_percentage_error(y_true_inv, y_pred_inv)
+        r2 = r2_score(y_true_inv, y_pred_inv)
 
-df_prediction_proba = pd.DataFrame(prediction_proba)
-df_prediction_proba.columns = ['Adelie', 'Chinstrap', 'Gentoo']
-df_prediction_proba.rename(columns={0: 'Adelie',
-                                 1: 'Chinstrap',
-                                 2: 'Gentoo'})
+        st.success(f"📌 RMSE: {rmse:.2f} | MAPE: {mape:.3f} | R²: {r2:.2f}")
 
-# Display predicted species
-st.subheader('Predicted Species')
-st.dataframe(df_prediction_proba,
-             column_config={
-               'Adelie': st.column_config.ProgressColumn(
-                 'Adelie',
-                 format='%f',
-                 width='medium',
-                 min_value=0,
-                 max_value=1
-               ),
-               'Chinstrap': st.column_config.ProgressColumn(
-                 'Chinstrap',
-                 format='%f',
-                 width='medium',
-                 min_value=0,
-                 max_value=1
-               ),
-               'Gentoo': st.column_config.ProgressColumn(
-                 'Gentoo',
-                 format='%f',
-                 width='medium',
-                 min_value=0,
-                 max_value=1
-               ),
-             }, hide_index=True)
-
-
-penguins_species = np.array(['Adelie', 'Chinstrap', 'Gentoo'])
-st.success(str(penguins_species[prediction][0]))
-
-
+        # График
+        fig, ax = plt.subplots(figsize=(10, 4))
+        ax.plot(y_true_inv, label='Истинные значения')
+        ax.plot(y_pred_inv, label='Прогноз (LSTM)', linestyle='--')
+        ax.set_title("Сравнение прогноза и реальности")
+        ax.legend()
+        st.pyplot(fig)

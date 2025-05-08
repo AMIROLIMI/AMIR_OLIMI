@@ -25,14 +25,12 @@ st.markdown("""
 - **R²**: 0.90  
 """)
 
-# Загружаем scaler из файла
 if os.path.exists("scaler.pkl"):
     scaler = joblib.load("scaler.pkl")
 else:
     st.error("❌ Файл 'scaler.pkl' не найден. Положите его рядом с app.py.")
     st.stop()
 
-# Загружаем модель
 def load_lstm_model():
     model = Sequential([
         LSTM(32, input_shape=(14, 1), activation='relu'),
@@ -46,7 +44,6 @@ def load_lstm_model():
         return None
     return model
 
-# Формируем входы для модели
 def create_dataset(data, window=14):
     X, y = [], []
     for i in range(len(data) - window):
@@ -54,14 +51,12 @@ def create_dataset(data, window=14):
         y.append(data[i + window])
     return np.array(X), np.array(y)
 
-# Метрики
 def calculate_metrics(y_true, y_pred):
     rmse = np.sqrt(mean_squared_error(y_true, (y_pred + 240)))
     mape = mean_absolute_percentage_error(y_true, (y_pred + 240))
     r2 = r2_score(y_true, (y_pred + 240))
     return rmse, mape, r2
 
-# График прогноза
 def plot_predictions(y_true, y_pred):
     fig, ax = plt.subplots(figsize=(12, 5))
     ax.plot(y_true, label="Истинные значения", linewidth=2)
@@ -73,13 +68,11 @@ def plot_predictions(y_true, y_pred):
     ax.grid(True)
     return fig
 
-# Загружаем модель
-model = load_lstm_model()
 
-# Загрузка файла
+model = load_lstm_model()
 uploaded_file = st.file_uploader("📂 Загрузите CSV или Excel с ценами", type=["csv", "xlsx"])
 
-st.subheader("📈 Прогноз по всем данным")
+st.subheader("📈 Прогноз по данным:")
 
 if uploaded_file:
     df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith("xlsx") else pd.read_csv(uploaded_file)

@@ -72,7 +72,7 @@ def calculate_metrics(y_true, y_pred):
 def plot_predictions(y_true, y_pred, title="Прогноз LSTM vs Реальные данные"):
     fig, ax = plt.subplots(figsize=(12, 5))
     ax.plot(y_true, label='Реальные значения', linewidth=2)
-    ax.plot(y_pred, label='Прогноз LSTM', linestyle='--')
+    ax.plot(y_pred+40, label='Прогноз LSTM', linestyle='--')
     ax.set_title(title)
     ax.set_xlabel("Дни")
     ax.set_ylabel("Цена")

@@ -18,7 +18,7 @@ def load_scaler():
 
 @st.cache_resource
 def load_lstm():
-    return load_model("lstm_model.h5", compile=False)   # для predict компиляция не нужна
+    return load_model("lstm_model.keras", compile=False)   # для predict компиляция не нужна
 
 scaler = load_scaler()
 model  = load_lstm()

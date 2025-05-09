@@ -64,7 +64,6 @@ if file:
 
     st.write("Последние строки датасета:", df.tail())
 
-    # ---------- scaling ----------
     try:
         scaled = scaler.transform(df[["price"]])
     except ValueError as e:

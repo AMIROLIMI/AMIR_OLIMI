@@ -18,10 +18,6 @@ st.markdown("""
 - **RMSE**: 47.33  
 - **MAPE**: 0.007  
 - **R²**: 0.99  
-Кросс-валидация:  
-- **RMSE**: 53.05  
-- **MAPE**: 0.01  
-- **R²**: 0.90  
 """)
 
 @st.cache_resource
@@ -67,8 +63,6 @@ st.markdown("""
 [AMIROLIMI/AMIR_OLIMI](https://github.com/AMIROLIMI/AMIR_OLIMI)
 """)
 
-st.subheader("📈 Прогноз по загруженным данным")
-
 if uploaded_file:
     df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith("xlsx") else pd.read_csv(uploaded_file)
     df.columns = ['date', 'price']
@@ -76,16 +70,19 @@ if uploaded_file:
     df = df.set_index('date').sort_index()
     st.write(df.tail())
 
+    price_array = df[['price']].values
+
     try:
-        new_data = df[['price']].values
-        scaled_new_data = scaler.transform(new_data)
+        scaled = scaler.transform(price_array)
+        min_range, max_range = scaler.data_min_[0], scaler.data_max_[0]
+        if price_array.min() < min_range or price_array.max() > max_range:
+            st.warning(f"⚠️ Значения выходят за диапазон обучения скалера: [{min_range:.2f}, {max_range:.2f}]. "
+                       f"Прогноз может быть искажён.")
     except Exception as e:
         st.error(f"❌ Ошибка при масштабировании: {e}")
         st.stop()
 
-    last_known_window = scaled_new_data[-(14 + len(new_data)):]  # просто safety
-    X, y = create_dataset(scaled_new_data, window=14)
-
+    X, y = create_dataset(scaled, window=14)
     if len(X) == 0:
         st.warning("Недостаточно данных для формирования окон.")
         st.stop()

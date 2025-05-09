@@ -1,38 +1,37 @@
-# app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
 import matplotlib.pyplot as plt
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.models import load_model
 from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error, r2_score
 
-WINDOW = 14          # то же окно, что в ноутбуке
-UNITS  = 32          # то же число ячеек
+WINDOW = 14          # длина окна, как в ноутбуке
 
 st.set_page_config(page_title="Прогноз цены золота", layout="wide")
 st.title("📉 Прогноз цены золотых слитков (LSTM)")
 
-# ---------- helpers ----------
+# ---------- кешируем загрузку артефактов ----------
 @st.cache_resource
 def load_scaler():
     return joblib.load("scaler.pkl")
 
 @st.cache_resource
-def load_model():
-    m = Sequential([LSTM(UNITS, input_shape=(WINDOW, 1)), Dense(1)])
-    m.load_weights("lstm_model.weights.h5")
-    return m
+def load_lstm():
+    return load_model("lstm_model.h5", compile=False)   # для predict компиляция не нужна
 
-def create_dataset(arr, window=WINDOW):
+scaler = load_scaler()
+model  = load_lstm()
+
+# ---------- утилиты ----------
+def create_dataset(arr, win=WINDOW):
     X, y = [], []
-    for i in range(len(arr) - window):
-        X.append(arr[i:i + window])
-        y.append(arr[i + window])
+    for i in range(len(arr) - win):
+        X.append(arr[i:i + win])
+        y.append(arr[i + win])
     return np.array(X), np.array(y)
 
-def calc_metrics(y_true, y_pred):
+def metrics(y_true, y_pred):
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
     mape = mean_absolute_percentage_error(y_true, y_pred)
     r2   = r2_score(y_true, y_pred)
@@ -45,45 +44,36 @@ def plot_pred(y_true, y_pred):
     ax.set_title("Прогноз LSTM vs Реальные данные")
     ax.set_xlabel("Дни")
     ax.set_ylabel("Цена")
-    ax.legend()
-    ax.grid(True)
+    ax.legend(); ax.grid(True)
     return fig
 
-# ---------- load artefacts ----------
-scaler = load_scaler()
-model  = load_model()
-
-# ---------- file upload ----------
-file = st.file_uploader("📂 Загрузите CSV или Excel с колонками date,price", type=["csv", "xlsx"])
+# ---------- интерфейс ----------
+file = st.file_uploader("📂 Загрузите CSV или Excel с колонками date,price", type=("csv", "xlsx"))
 
 if file:
     df = pd.read_excel(file) if file.name.endswith("xlsx") else pd.read_csv(file)
     if df.shape[1] != 2:
-        st.error("Файл должен иметь два столбца: date, price")
-        st.stop()
+        st.error("Файл должен содержать два столбца: date, price"); st.stop()
 
     df.columns = ["date", "price"]
     df["date"] = pd.to_datetime(df["date"])
     df = df.set_index("date").sort_index()
 
-    st.write("Последние строки датасета:", df.tail())
+    st.write("📄 Предпросмотр данных:", df.tail())
 
-    # ---------- scaling ----------
+    # --- масштабирование тем же scaler ---
     try:
         scaled = scaler.transform(df[["price"]])
     except ValueError as e:
-        st.error(f"Scaler не смог трансформировать данные: {e}")
-        st.stop()
+        st.error(f"Ошибка масштабирования: {e}"); st.stop()
 
-    # если диапазон вышел за [0, 1], предупредим
     if scaled.min() < 0 or scaled.max() > 1:
-        st.warning("⚠️ Загруженные цены выходят за диапазон, на котором обучался scaler. "
-                   "Прогноз может быть менее точным.")
+        st.warning("⚠️ Цены выходят за диапазон train-масштабирования. "
+                   "Результаты могут быть недостоверны."); st.stop()
 
     X, y = create_dataset(scaled, WINDOW)
     if len(X) == 0:
-        st.warning("Недостаточно строк для окна размера 14 дней.")
-        st.stop()
+        st.warning("Недостаточно строк для окна 14 дней."); st.stop()
 
     X = X.reshape((X.shape[0], X.shape[1], 1))
 
@@ -92,12 +82,12 @@ if file:
         y_pred_inv = scaler.inverse_transform(y_pred)
         y_true_inv = scaler.inverse_transform(y.reshape(-1, 1))
 
-        rmse, mape, r2 = calc_metrics(y_true_inv, y_pred_inv)
+        rmse, mape, r2 = metrics(y_true_inv, y_pred_inv)
         st.success(f"RMSE: {rmse:.2f} | MAPE: {mape:.3f} | R²: {r2:.3f}")
-
         st.pyplot(plot_pred(y_true_inv, y_pred_inv))
 else:
     st.info("Загрузите файл для получения прогноза.")
+
 
 
 # import streamlit as st

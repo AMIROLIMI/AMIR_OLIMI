@@ -86,7 +86,11 @@ if file:
         st.stop()
 
     X = X.reshape((X.shape[0], X.shape[1], 1))
-
+    st.markdown("""
+    Если у вас нет данных, вы можете скачать их из моего репозитория  
+    [AMIROLIMI/AMIR_OLIMI](https://github.com/AMIROLIMI/AMIR_OLIMI).
+    """
+    )
     if st.button("🔮 Сделать прогноз"):
         y_pred = model.predict(X, verbose=0)
         y_pred_inv = scaler.inverse_transform(y_pred)
@@ -161,11 +165,7 @@ else:
 
 # model = load_lstm_model()
 # uploaded_file = st.file_uploader("📂 Загрузите CSV или Excel с ценами", type=["csv", "xlsx"])
-# st.markdown("""
-# Если у вас нет данных, вы можете скачать их из моего репозитория  
-# [AMIROLIMI/AMIR_OLIMI](https://github.com/AMIROLIMI/AMIR_OLIMI).
-# """
-# )
+
 
 # st.subheader("📈 Прогноз по данным:")
 
